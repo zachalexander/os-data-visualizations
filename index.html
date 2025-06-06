@@ -16,6 +16,23 @@
         justify-content: center;
         align-items: center;
         margin: auto;
+
+        .viz-1 {
+          display: flex;
+          flex-direction: column;
+          position: relative;
+
+          .title {
+            text-align:center;
+
+            .highlight {
+              color: white;
+              background: #DF4601;
+              padding: 0.1em 0.1em;
+              font-weight: 600;
+            }
+          }
+        }
     }
     .headline {
         display: flex;
@@ -36,10 +53,30 @@
     .tooltip {
       position: absolute;
       background: white;
-      border: 2px solid #ddd;
-      padding: 4px 8px;
+      border: 1px solid #ddd;
+      padding: 1em;
       pointer-events: none;
-      font-size: 12px;
+      font-size: 14px;
+
+      .tooltip-wrapper {
+
+        .date {
+          margin-bottom: 0.5em;
+          padding: 0.25em;
+          color:white; 
+          background-color: #DF4601;
+          font-weight:600; 
+          font-size:1.15em;
+        }
+
+        .tooltip-table {
+
+          .table-headers {
+            font-weight: normal;
+            font-size: 0.85em;
+          }
+        }
+      }
     }
     .last-updated {
         font-size: 13px;
@@ -53,11 +90,9 @@
     }
     .y-axis-label {
         font-size: 14px;
-        font-weight: 600;
     }
     .tick {
         font-size: 12px;
-        font-weight: 600;
     }
   </style>
 </head>
@@ -67,14 +102,20 @@
     <img class="logo" src="orioles-logo.svg"></img><d2>Baltimore Orioles <br>Data Visualizations (2025)</d2>
 </div>
 <div class="viz-1">
-    <svg id="chart" width="960" height="500"></svg>
-    <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+    <h2 class="title">How many <span class="highlight">games back</span> are they?</h2>
+    <svg id="chart" width="960" height="400"></svg>
+    <div id="tooltip" class="tooltip"></div>
 </div>
 
 <script>
     // ——————— Setup & AWS SDK (as before) ———————
+
+    // Colors
+    const ORIOLE_ORANGE = "#DF4601",
+      DIVISION_GRAY = "#A2AAAD";
+
     const svg = d3.select("#chart"),
-          margin = { top: 120, right: 30, bottom: 30, left: 50 },
+          margin = { top: 30, right: 50, bottom: 30, left: 50 },
           width  = +svg.attr("width")  - margin.left - margin.right,
           height = +svg.attr("height") - margin.top  - margin.bottom;
   
@@ -86,86 +127,23 @@
     // Line generators
     const lineWild = d3.line()
         .x(d => x(d.date))
-        .y(d => y(d.wildcardGamesBack));
+        .y(d => y(d.wildcardGamesBack))
+        .curve(d3.curveCardinal.tension(0));
   
     const lineDiv = d3.line()
         .x(d => x(d.date))
-        .y(d => y(d.divisionGamesBack));
-  
-    // Colors
-    const ORIOLE_ORANGE = "#DF4601",
-          DIVISION_BLACK = "#000000";
+        .y(d => y(d.divisionGamesBack))
+        .curve(d3.curveCardinal.tension(0));
 
     // Logo
     const logoUrl = "./orioles-logo.svg";
-    const logoSize = 36;
-
-    const titleGroup = svg.append("g")
-        .attr("transform", `translate(0, ${margin.top / 2})`);
-
-    const lastUpdated = svg.append("g")
-        .attr("transform",  `translate(0, ${margin.top / 2})`);     
-
-    // 4) Append the title text, offset to the right of the logo
-    titleGroup.append("text")
-    .attr("x", 0)          // 8px padding after logo
-    .attr("y", 0)                     // aligned with the group’s origin
-    .attr("text-anchor", "start")
-    .attr("dominant-baseline", "middle")
-    .attr("font-size", "1.5em")
-    .attr("font-weight", "bold")
-    .text("How many games back are they?");
-
-    // 2) measure its box
-    const textBox = titleGroup.node().getBBox();
-    const padX = 4, padY = 2;         // tweak padding to taste
-
-    // 3) insert a rect *before* the text, sized to the box + padding
-    titleGroup.insert("rect", "text")
-    .attr("x", (textBox.width / 2) - 62)
-    .attr("y", textBox.y - padY)
-    .attr("width", ((textBox.width + padX) / 2.5) - 5)
-    .attr("height", textBox.height + padY * 2)
-    .attr("fill", "#ff0")          // your highlight color (e.g. yellow)
-    .attr("opacity", 1);  
-
-    const box = titleGroup.node().getBBox();
-    const offsetX = (+svg.attr("width") - box.width) / 2 - box.x;
-
-    titleGroup.attr("transform", `translate(${offsetX}, ${margin.top * 0.25})`);
+    const logoSize = 36; 
   
     // Chart group
+    
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
   
-    // Legend
-    const legend = svg.append("g")
-      .attr("transform", `translate(${width + margin.left + 10},${margin.top - 50})`)
-    legend.append("circle")
-      .attr("cx", -810).attr("cy", 175).attr("r", 5)
-      .attr("fill", ORIOLE_ORANGE);
-    legend.append("text")
-      .attr("x", -800).attr("y", 180)
-      .text("Wildcard games back")
-      .attr("font-size", "14px");
-    legend.append("circle")
-      .attr("cx", -810).attr("cy", 195).attr("r", 5)
-      .attr("fill", DIVISION_BLACK);
-    legend.append("text")
-      .attr("x", -800).attr("y", 200)
-      .text("Division games back")
-      .attr("font-size", "14px");
-
-    const bbox = legend.node().getBBox(), pad = 6;
-
-    legend.insert("rect", ":first-child")
-      .attr("x", bbox.x - pad)
-      .attr("y", bbox.y - pad)
-      .attr("width", bbox.width + 2 * pad)
-      .attr("height", bbox.height + 2 * pad)
-      .attr("fill", "white")
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 2);
   
     // AWS DynamoDB fetch
     AWS.config.region = "us-east-1";
@@ -218,15 +196,9 @@
         .sort((a,b) => d3.ascending(a.date, b.date));
 
         const [firstDate, lastDate] = d3.extent(data, d => d.date);
-
-        lastUpdated.append("text")
-            .attr("x", width / 2 - margin.left)
-            .attr("class", "last-updated")
-            .text(`Last updated on ${formatDateWithSuffix(lastDate)}`);    
-            
   
         // Domains
-        x.domain(d3.extent(data, d => d.date));
+        x.domain(d3.extent([parseDate("2025-03-27"), parseDate("2025-09-28")]));
         const maxGB = d3.max(data, d => Math.max(d.wildcardGamesBack, d.divisionGamesBack));
         y.domain([0, maxGB]);
   
@@ -234,7 +206,7 @@
         g.append("g")
           .attr("class", "axis")
           .call(d3.axisTop(x).tickSize(0).tickPadding(6)
-            .ticks(d3.timeDay.filter(d=>d3.timeDay.count(0, d) % 7 === 0))
+            .ticks(d3.timeDay.filter(d=>d3.timeDay.count(0, d) % 10 === 0))
             .tickFormat(formatDateAxis)
           );
   
@@ -270,57 +242,208 @@
           .datum(data)
           .attr("class", "division-line")
           .attr("fill", "none")
-          .style("stroke", DIVISION_BLACK)
+          .style("stroke", DIVISION_GRAY)
           .style("stroke-width", 2)
           .attr("d", lineDiv)
-  
-        // Points + tooltip for both lines
+
+        const focusWild = g.append("g")
+          .attr("class", "focus-wild")
+          .style("display", "none");
+
+        focusWild.append("circle")
+          .attr("r", 4)
+          .attr("fill", ORIOLE_ORANGE)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0);
+
+        const focusDiv = g.append("g")
+          .attr("class", "focus-div")
+          .style("display", "none");
+
+        focusDiv.append("circle")
+          .attr("r", 4)
+          .attr("fill", DIVISION_GRAY)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0);
+        
+        const lastPoint = data[data.length - 1];
+
+        focusWild
+        .style("display", null)
+        .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
+
+        focusDiv
+        .style("display", null)
+        .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
+
+        const focusLineX = g.append("line")
+          .attr("class", "focus-line-x")
+          .style("stroke", "#aaa")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "4 2")
+          .style("opacity", 0);
+
+        // Horizontal guideline (optional, follows wildcard y-value)
+        const focusLineYWild = g.append("line")
+          .attr("class", "focus-line-y")
+          .style("stroke", `${ORIOLE_ORANGE}`)
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "4 2")
+          .style("opacity", 0);
+
+        const focusLineYDiv = g.append("line")
+        .attr("class", "focus-line-y")
+        .style("stroke", `${DIVISION_GRAY}`)
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", "4 2")
+        .style("opacity", 0);
+
+        const bisectDate = d3.bisector(d => d.date).left;
+
+        g.append("rect")
+        .attr("class", "overlay")
+        .attr("width", width)
+        .attr("height", height)
+        .style("fill", "none")
+        .style("pointer-events", "all")
+        .style("cursor", "crosshair")
+        .on("mouseover", () => {
+          focusWild.style("display", null);
+          focusDiv.style("display", null);
+        })
+        .on("mouseout", () => {
+          focusWild.style("display", "none").style("cursor", "default");
+          focusDiv.style("display", "none").style("cursor", "default");
+          focusLineX.style("opacity", 0);
+          focusLineYWild.style("opacity", 0);
+          focusLineYDiv.style("opacity", 0);
+
+          tooltip.style("opacity", 1)
+          .html(`
+          <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
+          <span class="date">Hover Over Date</span>
+          <table class="tooltip-table" style="text-align:center;">
+            <thead>
+              <tr>
+                <th class="table-headers">Division</th>
+                <th class="table-headers">Games Back</th>
+              <tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color:${ORIOLE_ORANGE}; font-weight: 600">Wildcard</td>
+                <td style="color:${ORIOLE_ORANGE}; font-weight: 600">--</td>
+              </tr>
+              <tr>
+                <td style="color:${DIVISION_GRAY}; font-weight: 600">AL East</td>
+                <td style="color:${DIVISION_GRAY}; font-weight: 600">--</td>
+              </tr>
+            </tbody>
+            </table>
+          </div>`);
+          })
+        .on("mousemove", mousemove)
+
         const tooltip = d3.select("#tooltip");
-        ["wildcardGamesBack","divisionGamesBack"].forEach(key => {
-            g.selectAll(`.dot-${key}`)
-            .data(data)
-            .join("circle")
-            .attr("class", `dot-${key}`)
-            .attr("cx", d => x(d.date))
-            .attr("cy", d => y(d[key]))
-            .attr("r", 3)
-            .attr("fill", key === "wildcardGamesBack" ? ORIOLE_ORANGE : DIVISION_BLACK)
-            .on("mouseover", function(event, d) {
-                d3.select(this)
-                .attr("r", 6)
-                .style("cursor", "crosshair");
-                d3.select(key === "wildcardGamesBack" ? ".wild-line" : ".division-line")
-                  .style("stroke-width", 4);
-            })
-            .on("mouseout", function() {
-                d3.select(this)
-                .attr("r", 3)
-                .style("cursor", "default");
-                // and revert line if you highlighted it above:
-                d3.select(key === "wildcardGamesBack" ? ".wild-line" : ".division-line")
-                  .style("stroke-width", 2);
-            })
-            .on("mousemove", (event, d) => {
-                tooltip
-                .style("opacity", 1)
-                .style("border-radius", "10px")
-                .style("border", "1px solid #ddd")
-                .style("display", "flex")
-                .style("align-items", "center")
-                .style("padding-top", "1em")
-                .html(`<div class="tooltip-wrapper style="display:flex;">
-                            <div class="date-header" style="font-size:1.25em;color:${key === "wildcardGamesBack" ? ORIOLE_ORANGE: DIVISION_BLACK};display:flex;align-items:center;justify-content:center;">
-                                <text style="font-weight:600">${formatDateWithSuffix(d.date)}</text>
-                            </div>
-                            <div class="games-back" style="display:flex;justify-content:center;">
-                                <p><text class="gb-num" style="background:${key === "wildcardGamesBack" ? ORIOLE_ORANGE: DIVISION_BLACK};padding:0.5em 0.5em; color:white;font-size:1.05em;font-weight:600">${d[key]} games back</text></p>
-                            </div>
-                        </div>`)
-                .style("left", (event.pageX - 50) + "px")
-                .style("top", (event.pageY - 100) + "px");
-            })
-            .on("mouseout.tooltip", () => tooltip.style("opacity", 0));
-        });
+
+        tooltip
+        .style("left", "75px")
+        .style("top", `${margin.top + 275}px`)
+        .style("opacity", 1)
+        .html(`
+        <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
+        <span class="date">${formatDateWithSuffix(lastPoint.date)}</span>
+        <table class="tooltip-table" style="text-align:center;">
+          <thead>
+            <tr>
+              <th class="table-headers">Division</th>
+              <th class="table-headers">Games Back</th>
+            <tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:${ORIOLE_ORANGE}; font-weight: 600">Wildcard</td>
+              <td style="color:${ORIOLE_ORANGE}; font-weight: 600">${lastPoint.wildcardGamesBack}</td>
+            </tr>
+            <tr>
+              <td style="color:${DIVISION_GRAY}; font-weight: 600">AL East</td>
+              <td style="color:${DIVISION_GRAY}; font-weight: 600">${lastPoint.divisionGamesBack}</td>
+            </tr>
+          </tbody>
+          </table>
+        </div>`);
+
+      
+        function mousemove(event){
+          const [mx] = d3.pointer(event, this);
+          const xm = x.invert(mx);
+
+          const i = bisectDate(data, xm, 1);
+          const d0 = data[i - 1];
+          const d1 = data[i] || d0;
+
+          const d = (xm - d0.date) > (d1.date - xm) ? d1 : d0;
+          console.log(d)
+
+          focusWild.attr(
+            "transform",
+            `translate(${x(d.date)},${y(d.wildcardGamesBack)})`
+          );
+          focusDiv.attr(
+            "transform",
+            `translate(${x(d.date)},${y(d.divisionGamesBack)})`
+          );
+
+          // Show and move vertical line
+          focusLineX
+            .attr("x1", x(d.date))
+            .attr("x2", x(d.date))
+            .attr("y1", 0)
+            .attr("y2", height)
+            .style("opacity", 1);
+
+          // Show and move horizontal line (optional: follows wildcard line)
+          focusLineYWild
+            .attr("x1", 0)
+            .attr("x2", width)
+            .attr("y1", y(d.wildcardGamesBack))
+            .attr("y2", y(d.wildcardGamesBack))
+            .style("opacity", 1);
+
+            focusLineYDiv
+            .attr("x1", 0)
+            .attr("x2", width)
+            .attr("y1", y(d.divisionGamesBack))
+            .attr("y2", y(d.divisionGamesBack))
+            .style("opacity", 1);
+
+          tooltip
+            .style("left", "75px")
+            .style("top", `${margin.top + 275}px`)
+            .style("opacity", 1)
+            .html(`
+            <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
+            <span class="date">${formatDateWithSuffix(d.date)}</span>
+            <table class="tooltip-table" style="text-align:center;">
+              <thead>
+                <tr>
+                  <th class="table-headers">Division</th>
+                  <th class="table-headers">Games Back</th>
+                <tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="color:${ORIOLE_ORANGE}; font-weight: 600">Wildcard</td>
+                  <td style="color:${ORIOLE_ORANGE}; font-weight: 600">${d.wildcardGamesBack}</td>
+                </tr>
+                <tr>
+                  <td style="color:${DIVISION_GRAY}; font-weight: 600">AL East</td>
+                  <td style="color:${DIVISION_GRAY}; font-weight: 600">${d.divisionGamesBack}</td>
+                </tr>
+              </tbody>
+              </table>
+            </div>`);
+            }
       })
       .catch(err => console.error("DynamoDB load error:", err));
   </script>
