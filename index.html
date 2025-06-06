@@ -17,21 +17,21 @@
         align-items: center;
         margin: auto;
 
+        .title {
+          text-align: center;
+        }
+
+        .highlight {
+          color: white;
+          background: #DF4601;
+          padding: 0.1em 0.1em;
+          font-weight: 600;
+        }
+
         .viz-1 {
           display: flex;
           flex-direction: column;
           position: relative;
-
-          .title {
-            text-align:center;
-
-            .highlight {
-              color: white;
-              background: #DF4601;
-              padding: 0.1em 0.1em;
-              font-weight: 600;
-            }
-          }
         }
     }
     .headline {
@@ -94,6 +94,50 @@
     .tick {
         font-size: 12px;
     }
+
+    .game-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .game-table {
+      border-collapse: collapse;
+      width: 22%;
+      min-width: 250px;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .game-table caption.win {
+      background-color: #DF4601;
+      color: #fff;
+      font-weight: bold;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .game-table caption.loss {
+      background-color: #A2AAAD;
+      color: #fff;
+      font-weight: bold;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .game-table td {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    .game-table td.label {
+      font-weight: bold;
+      background-color: #f2f2f2;
+      width: 40%;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +149,10 @@
     <h2 class="title">How many <span class="highlight">games back</span> are they?</h2>
     <svg id="chart" width="960" height="400"></svg>
     <div id="tooltip" class="tooltip"></div>
+</div>
+<div class="recent-scores">
+  <h2 class="title">Scores from the <span class="highlight">last 10 games</span></h2>
+  <div class="game-container" id="gameContainer"></div>
 </div>
 
 <script>
@@ -152,7 +200,7 @@
     });
     const docClient = new AWS.DynamoDB.DocumentClient();
   
-    function loadDataFromDynamo() {
+    function loadGamesBackDataFromDynamo() {
       return new Promise((resolve, reject) => {
         docClient.scan({
           TableName: "Orioles-Games_Back",
@@ -162,6 +210,23 @@
             "#date": "date",
             "#wildcard_gb": "wildcard_gb",
             "#division_gb": "division_gb"
+          }
+        }, (err, data) => {
+          if (err) reject(err);
+          else resolve(data.Items);
+        });
+      });
+    }
+
+    function loadPastGamesDataFromDynamo() {
+      return new Promise((resolve, reject) => {
+        docClient.scan({
+          TableName: "Orioles-Games",
+          ProjectionExpression: "#id, away_score, away_team, #date, home_score, home_team, losing_pitcher, losing_team, save_pitcher, #status, venue, winning_pitcher, winning_team",
+          ExpressionAttributeNames: {
+            "#id": "id",
+            "#date": "date",
+            "#status": "status"
           }
         }, (err, data) => {
           if (err) reject(err);
@@ -184,8 +249,57 @@
         const day = date.getDate();
         return d3.timeFormat("%-m/%-d")(date);
     }
+
+    loadPastGamesDataFromDynamo().then(raw => {
+      const data = raw.map(d => ({
+        date: parseDate(d.date),
+        awayScore: +d.away_score,
+        awayTeam: d.away_team,
+        homeScore: +d.home_score,
+        homeTeam: d.home_team,
+        losingPitcher: d.losing_pitcher,
+        losingTeam: d.losing_team,
+        savePitcher: d.save_pitcher,
+        status: d.status,
+        venue: d.venue,
+        winningPitcher: d.winning_pitcher,
+        winningTeam: d.winning_team
+      }))
+      .sort((a,b) => d3.descending(a.date, b.date))
+
+      const pastTenGames = data.slice(1, 11)
+      createTableFromJSON(pastTenGames)
+    })
+
+    function createTableFromJSON(jsonData){
+      const games = jsonData;
+      const container = document.getElementById("gameContainer");
+
+      games.forEach(game => {
+      const table = document.createElement("table");
+      table.className = "game-table";
+
+      const date = new Date(game.date);
+
+      table.innerHTML = `
+        <caption class=${(game.winningTeam === "Baltimore Orioles") & (game.status === "Final") ? "win":"loss"}>${formatDateWithSuffix(date)} - ${(game.winningTeam === "Baltimore Orioles") & (game.status === "Final") ? "O's Win": "O's Lose"}</caption>
+        <tbody>
+          <tr><td class="label">${game.awayTeam}</td><td>${isNaN(game.awayScore) ? "--" : game.awayScore}</td></tr>
+          <tr><td class="label">${game.homeTeam}</td><td>${isNaN(game.homeScore) ? "--": game.homeScore}</td></tr>
+          <tr><td class="label">Venue</td><td>${game.venue}</td></tr>
+          <tr><td class="label">Winning Pitcher</td><td>${game.winningPitcher ?? "--"}</td></tr>
+          <tr><td class="label">Losing Pitcher</td><td>${game.losingPitcher ?? "--"}</td></tr>
+          <tr><td class="label">Save Pitcher</td><td>${game.savePitcher ?? "--"}</td></tr>
+        </tbody>
+      `;
+
+      container.appendChild(table);
+    });
+
+    }
+
   
-    loadDataFromDynamo()
+    loadGamesBackDataFromDynamo()
       .then(raw => {
         // Parse & sort
         const data = raw.map(d => ({
@@ -312,16 +426,22 @@
           focusDiv.style("display", null);
         })
         .on("mouseout", () => {
-          focusWild.style("display", "none").style("cursor", "default");
-          focusDiv.style("display", "none").style("cursor", "default");
           focusLineX.style("opacity", 0);
           focusLineYWild.style("opacity", 0);
           focusLineYDiv.style("opacity", 0);
 
+          focusWild
+          .style("display", null)
+          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
+
+          focusDiv
+          .style("display", null)
+          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
+
           tooltip.style("opacity", 1)
           .html(`
-          <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
-          <span class="date">Hover Over Date</span>
+            <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
+          <span class="date">${formatDateWithSuffix(lastPoint.date)}</span>
           <table class="tooltip-table" style="text-align:center;">
             <thead>
               <tr>
@@ -332,11 +452,11 @@
             <tbody>
               <tr>
                 <td style="color:${ORIOLE_ORANGE}; font-weight: 600">Wildcard</td>
-                <td style="color:${ORIOLE_ORANGE}; font-weight: 600">--</td>
+                <td style="color:${ORIOLE_ORANGE}; font-weight: 600">${lastPoint.wildcardGamesBack}</td>
               </tr>
               <tr>
                 <td style="color:${DIVISION_GRAY}; font-weight: 600">AL East</td>
-                <td style="color:${DIVISION_GRAY}; font-weight: 600">--</td>
+                <td style="color:${DIVISION_GRAY}; font-weight: 600">${lastPoint.divisionGamesBack}</td>
               </tr>
             </tbody>
             </table>
