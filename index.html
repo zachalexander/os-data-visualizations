@@ -95,48 +95,82 @@
         font-size: 12px;
     }
 
-    .game-container {
+    .game-div {
       display: flex;
       flex-wrap: wrap;
       gap: 16px;
-      justify-content: center;
-    }
+      justify-content: space-between;
+      max-width: 1100px;
 
-    .game-table {
-      border-collapse: collapse;
-      width: 22%;
-      min-width: 250px;
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
+      .game {
+        flex: 1 1 30%;
+        max-width: 30%;
+        margin: 10px;
+        text-align: center;
+        box-sizing: border-box;
+        border: 1px solid #ddd;
+        padding: 2em 1em;
 
-    .game-table caption.win {
-      background-color: #000000;
-      color: #fff;
-      font-weight: bold;
-      padding: 8px;
-      text-align: center;
-    }
+        hr {
+          border: 1px dashed #ddd;
+        }
+      }
 
-    .game-table caption.loss {
-      background-color: #A2AAAD;
-      color: #fff;
-      font-weight: bold;
-      padding: 8px;
-      text-align: center;
-    }
+      .team-logo {
+        height: 36px;
+        width: 36px;
+      }
 
-    .game-table td {
-      padding: 6px 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-    }
+      .score-wrapper {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-evenly;
+        align-items: center;
+      }
 
-    .game-table td.label {
-      font-weight: bold;
-      background-color: #f2f2f2;
-      width: 40%;
+      .pitchers-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        text-align: start;
+        align-items: center;
+        font-size: 0.85em;
+
+        .pitcher-text {
+          font-size: 0.85em;
+        }
+      }
+
+      .venue-text {
+        font-size: 0.9em;
+      }
+
+      .score {
+        font-size: 1.5em;
+      }
+
+      .date-final-wrapper {
+        display: flex;
+        justify-content: center;
+        flex-direction: column-reverse;
+        align-items: center;
+        text-align: center;
+
+        .game-date {
+          display: flex;
+          justify-content: center;
+          font-size: 0.75em;
+          font-weight: 600;
+        }
+
+          
+        .final {
+          font-weight: 600;
+          font-size: 0.75em;
+          color: black;
+        }
+      }
+
     }
   </style>
 </head>
@@ -152,7 +186,7 @@
 </div>
 <div class="recent-scores">
   <h2 class="title">Scores from the last 10 games</h2>
-  <div class="game-container" id="gameContainer"></div>
+  <div class="game-div" id="gameDiv"></div>
 </div>
 
 <script>
@@ -235,6 +269,29 @@
       });
     }
 
+    function loadLogosFromS3(team_name) {
+      const S3_BASE = "https://mlb-logos-for-visuals.s3.amazonaws.com/";
+      const team_name_dashes = team_name.replaceAll(" ", "-");
+
+      const response = fetch(S3_BASE + `${team_name_dashes}/logo.png`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const img = new Image();
+          const logoUrl = URL.createObjectURL(blob);
+          img.src = logoUrl;
+          return img.src;
+        })
+        .catch(error => {
+          console.error("Error fetching logo:", error);
+        });
+        return response;
+    }
+
     function formatDateWithSuffix(date) {
         const day = date.getDate();
         let suffix = "th";
@@ -268,34 +325,41 @@
       .sort((a,b) => d3.descending(a.date, b.date))
 
       const pastTenGames = data.slice(1, 11)
-      createTableFromJSON(pastTenGames)
+      createGameBoard(pastTenGames)
     })
 
-    function createTableFromJSON(jsonData){
+    function createGameBoard(jsonData){
       const games = jsonData;
-      const container = document.getElementById("gameContainer");
+      const div = document.getElementById("gameDiv");
 
       games.forEach(game => {
-      const table = document.createElement("table");
-      table.className = "game-table";
+        const date = new Date(game.date);
+        const gameDiv = document.createElement("div");
+        gameDiv.className = "game";
 
-      const date = new Date(game.date);
+        gameDiv.innerHTML = `
+          <div class = "score-wrapper">
+            <img src="https://mlb-logos-for-visuals.s3.us-east-1.amazonaws.com/${game.awayTeam.replaceAll(" ", "-")}/logo.png" class="team-logo" alt="${game.awayTeam}">
+            <span class = "score"><strong>${game.awayScore}</strong></span>
+            <div class = "date-final-wrapper">
+              <span class = "game-date">${formatDateAxis(date)}</span>
+              <span class = "final">FINAL</span>
+            </div>
+            <span class = "score"><strong>${game.homeScore}</strong></span>
+            <img src="https://mlb-logos-for-visuals.s3.us-east-1.amazonaws.com/${game.homeTeam.replaceAll(" ", "-")}/logo.png" class="team-logo" alt="${game.homeTeam}"></span>
+          </div>
+          <hr>
+          <div class = "pitchers-wrapper">
+            <span class = "pitcher-text">W: ${game.winningPitcher ?? "--"}</span>
+            <span class = "pitcher-text">L: ${game.losingPitcher ?? "--"}</span>
+            <span class = "pitcher-text">S: ${game.savePitcher ?? "--"}</span>
+          </div>
+          <hr>
+          <span class="venue-text">${game.venue}</span>
+        `;
 
-      table.innerHTML = `
-        <caption class=${(game.winningTeam === "Baltimore Orioles") & (game.status === "Final") ? "win":"loss"}>${formatDateWithSuffix(date)} - ${(game.winningTeam === "Baltimore Orioles") & (game.status === "Final") ? "O's Win": "O's Lose"}</caption>
-        <tbody>
-          <tr><td class="label">${game.awayTeam}</td><td>${isNaN(game.awayScore) ? "--" : game.awayScore}</td></tr>
-          <tr><td class="label">${game.homeTeam}</td><td>${isNaN(game.homeScore) ? "--": game.homeScore}</td></tr>
-          <tr><td class="label">Venue</td><td>${game.venue}</td></tr>
-          <tr><td class="label">Winning Pitcher</td><td>${game.winningPitcher ?? "--"}</td></tr>
-          <tr><td class="label">Losing Pitcher</td><td>${game.losingPitcher ?? "--"}</td></tr>
-          <tr><td class="label">Save Pitcher</td><td>${game.savePitcher ?? "--"}</td></tr>
-        </tbody>
-      `;
-
-      container.appendChild(table);
-    });
-
+        div.appendChild(gameDiv);
+      })
     }
 
   
