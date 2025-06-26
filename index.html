@@ -324,13 +324,15 @@
       }))
       .sort((a,b) => d3.descending(a.date, b.date))
 
-      const pastTenGames = data.slice(1, 11)
+      const pastTenGames = data.slice(0, 10)
       createGameBoard(pastTenGames)
     })
 
     function createGameBoard(jsonData){
       const games = jsonData;
       const div = document.getElementById("gameDiv");
+
+      console.log(games)
 
       games.forEach(game => {
         const date = new Date(game.date);
