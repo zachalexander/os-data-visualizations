@@ -325,6 +325,7 @@
         winningTeam: d.winning_team
       }))
       .sort((a,b) => d3.descending(a.date, b.date))
+      .filter(d => d.status === "Final");
 
       const pastTenGames = data.slice(0, 10)
       createGameBoard(pastTenGames)
