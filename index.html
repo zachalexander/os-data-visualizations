@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Orioles Games Back from Wildcard (2025)</title>
@@ -7,51 +8,59 @@
   <script src="https://sdk.amazonaws.com/js/aws-sdk-2.814.0.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Neuton:ital,wght@0,200;0,300;0,400;0,700;0,800;1,400&family=Ultra&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Neuton:ital,wght@0,200;0,300;0,400;0,700;0,800;1,400&family=Ultra&display=swap"
+    rel="stylesheet">
   <style>
-    body { 
-        font-family: "Roboto", sans-serif; 
-        display: flex; 
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        margin: auto;
+    body {
+      font-family: "Roboto", sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin: auto;
 
-        .title {
-          text-align: center;
-        }
-
-        .highlight {
-          color: white;
-          background: #DF4601;
-          padding: 0.1em 0.1em;
-          font-weight: 600;
-        }
-
-        .viz-1 {
-          display: flex;
-          flex-direction: column;
-          position: relative;
-        }
-    }
-    .headline {
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
+      .title {
         text-align: center;
-        font-family: "Neuton", sans-serif;
-        font-weight: 700;
-        font-size: 3.5em;
-        line-height: 1em;
-        padding: 1em 0em 1em 0em;
+      }
 
-        .logo {
-            width: 100px;
-            height: 100px;
-            padding: 0em 0.5em;
-        }
+      .highlight {
+        color: white;
+        background: #DF4601;
+        padding: 0.1em 0.1em;
+        font-weight: 600;
+      }
+
+      .viz-1 {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
     }
-    .axis path, .axis line { stroke: #ddd; }
+
+    .headline {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      text-align: center;
+      font-family: "Neuton", sans-serif;
+      font-weight: 700;
+      font-size: 3.5em;
+      line-height: 1em;
+      padding: 1em 0em 1em 0em;
+
+      .logo {
+        width: 100px;
+        height: 100px;
+        padding: 0em 0.5em;
+      }
+    }
+
+    .axis path,
+    .axis line {
+      stroke: #ddd;
+    }
+
     .tooltip {
       position: absolute;
       background: white;
@@ -65,10 +74,10 @@
         .date {
           margin-bottom: 0.5em;
           padding: 0.25em;
-          color:white; 
+          color: white;
           background-color: #DF4601;
-          font-weight:600; 
-          font-size:1.15em;
+          font-weight: 600;
+          font-size: 1.15em;
         }
 
         .tooltip-table {
@@ -80,21 +89,25 @@
         }
       }
     }
+
     .last-updated {
-        font-size: 13px;
-        font-family: "Roboto", sans-serif;
-        fill: rgb(87, 86, 86) !important;
-        font-weight: 600;
+      font-size: 13px;
+      font-family: "Roboto", sans-serif;
+      fill: rgb(87, 86, 86) !important;
+      font-weight: 600;
     }
+
     .axis text {
       font-size: 14px;
       font-family: "Roboto", sans-serif;
     }
+
     .y-axis-label {
-        font-size: 14px;
+      font-size: 14px;
     }
+
     .tick {
-        font-size: 12px;
+      font-size: 12px;
     }
 
     .game-div {
@@ -165,7 +178,7 @@
           font-weight: 600;
         }
 
-          
+
         .final {
           font-weight: 600;
           font-size: 0.75em;
@@ -176,22 +189,23 @@
     }
   </style>
 </head>
+
 <body>
 
-<div class="headline">
+  <div class="headline">
     <d2>Baltimore Orioles <br>Data Visualizations (2025)</d2>
-</div>
-<div class="viz-1">
+  </div>
+  <div class="viz-1">
     <h2 class="title">How many <span class="highlight">games back</span> are they?</h2>
     <svg id="chart" width="960" height="400"></svg>
     <div id="tooltip" class="tooltip"></div>
-</div>
-<div class="recent-scores">
-  <h2 class="title">Scores from the last 10 games</h2>
-  <div class="game-div" id="gameDiv"></div>
-</div>
+  </div>
+  <div class="recent-scores">
+    <h2 class="title">Scores from the last 10 games</h2>
+    <div class="game-div" id="gameDiv"></div>
+  </div>
 
-<script>
+  <script>
     // ——————— Setup & AWS SDK (as before) ———————
 
     // Colors
@@ -199,48 +213,48 @@
       DIVISION_GRAY = "#A2AAAD";
 
     const svg = d3.select("#chart"),
-          margin = { top: 30, right: 50, bottom: 30, left: 50 },
-          width  = +svg.attr("width")  - margin.left - margin.right,
-          height = +svg.attr("height") - margin.top  - margin.bottom;
-  
+      margin = { top: 30, right: 50, bottom: 30, left: 50 },
+      width = +svg.attr("width") - margin.left - margin.right,
+      height = +svg.attr("height") - margin.top - margin.bottom;
+
     const parseDate = d3.timeParse("%Y-%m-%d");
     const x = d3.scaleTime().range([0, width]);
     // Inverted y: 0 at top → height at bottom
     const y = d3.scaleLinear().range([0, height]);
-  
+
     // Line generators
     const lineWild = d3.line()
-        .x(d => x(d.date))
-        .y(d => y(d.wildcardGamesBack))
-        .curve(d3.curveCardinal.tension(0));
-  
+      .x(d => x(d.date))
+      .y(d => y(d.wildcardGamesBack))
+      .curve(d3.curveCardinal.tension(0));
+
     const lineDiv = d3.line()
-        .x(d => x(d.date))
-        .y(d => y(d.divisionGamesBack))
-        .curve(d3.curveCardinal.tension(0));
+      .x(d => x(d.date))
+      .y(d => y(d.divisionGamesBack))
+      .curve(d3.curveCardinal.tension(0));
 
     // Logo
     const logoUrl = "./orioles-logo.svg";
-    const logoSize = 36; 
-  
+    const logoSize = 36;
+
     // Chart group
-    
+
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-  
-  
+
+
     // AWS DynamoDB fetch
     AWS.config.region = "us-east-1";
     AWS.config.credentials = new AWS.CognitoIdentityCredentials({
       IdentityPoolId: "us-east-1:e8927301-d80e-4052-9668-22f22b4f1d48"
     });
     const docClient = new AWS.DynamoDB.DocumentClient();
-  
+
     function loadGamesBackDataFromDynamo() {
       return new Promise((resolve, reject) => {
         docClient.scan({
           TableName: "Orioles-Games_Back",
-          ProjectionExpression: "#id, #date, #wildcard_gb, #division_gb",
+          ProjectionExpression: "#id, #date, #wildcard_gb, #division_gb, proj_gb_from_wc3, std_dev",
           ExpressionAttributeNames: {
             "#id": "id",
             "#date": "date",
@@ -291,22 +305,22 @@
         .catch(error => {
           console.error("Error fetching logo:", error);
         });
-        return response;
+      return response;
     }
 
     function formatDateWithSuffix(date) {
-        const day = date.getDate();
-        let suffix = "th";
-        if (day % 10 === 1 && day !== 11) suffix = "st";
-        else if (day % 10 === 2 && day !== 12) suffix = "nd";
-        else if (day % 10 === 3 && day !== 13) suffix = "rd";
-        return d3.timeFormat("%B")(date) + " " + day + suffix;
+      const day = date.getDate();
+      let suffix = "th";
+      if (day % 10 === 1 && day !== 11) suffix = "st";
+      else if (day % 10 === 2 && day !== 12) suffix = "nd";
+      else if (day % 10 === 3 && day !== 13) suffix = "rd";
+      return d3.timeFormat("%B")(date) + " " + day + suffix;
     }
 
-    
+
     function formatDateAxis(date) {
-        const day = date.getDate();
-        return d3.timeFormat("%-m/%-d")(date);
+      const day = date.getDate();
+      return d3.timeFormat("%-m/%-d")(date);
     }
 
     loadPastGamesDataFromDynamo().then(raw => {
@@ -324,14 +338,14 @@
         winningPitcher: d.winning_pitcher,
         winningTeam: d.winning_team
       }))
-      .sort((a,b) => d3.descending(a.date, b.date))
-      .filter(d => d.status === "Final");
+        .sort((a, b) => d3.descending(a.date, b.date))
+        .filter(d => d.status === "Final");
 
       const pastTenGames = data.slice(0, 10)
       createGameBoard(pastTenGames)
     })
 
-    function createGameBoard(jsonData){
+    function createGameBoard(jsonData) {
       const games = jsonData;
       const div = document.getElementById("gameDiv");
 
@@ -367,50 +381,52 @@
       })
     }
 
-  
+
     loadGamesBackDataFromDynamo()
       .then(raw => {
         // Parse & sort
         const data = raw.map(d => ({
           date: parseDate(d.date),
           wildcardGamesBack: +d.wildcard_gb,
-          divisionGamesBack: +d.division_gb
+          divisionGamesBack: +d.division_gb,
+          projected: d.proj_gb_from_wc3 ? +d.proj_gb_from_wc3 : null,
+          stdDev: d.std_dev ? +d.std_dev : null
         }))
-        .sort((a,b) => d3.ascending(a.date, b.date));
+          .sort((a, b) => d3.ascending(a.date, b.date));
 
         const [firstDate, lastDate] = d3.extent(data, d => d.date);
-  
+
         // Domains
         x.domain(d3.extent([parseDate("2025-03-27"), parseDate("2025-09-28")]));
         const maxGB = d3.max(data, d => Math.max(d.wildcardGamesBack, d.divisionGamesBack));
         y.domain([0, maxGB]);
-  
+
         // X-axis at top
         g.append("g")
           .attr("class", "axis")
           .call(d3.axisTop(x).tickSize(0).tickPadding(6)
-            .ticks(d3.timeDay.filter(d=>d3.timeDay.count(0, d) % 10 === 0))
+            .ticks(d3.timeDay.filter(d => d3.timeDay.count(0, d) % 10 === 0))
             .tickFormat(formatDateAxis)
           );
-  
+
         // Y-axis
         g.append("g")
           .attr("class", "axis")
           .attr("font-family", "Roboto")
           .call(d3.axisLeft(y).tickSize(0).tickPadding(6))
-        
-        g.append("text")
-            .attr("class", "y-axis-label")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -height / 2)
-            .attr("y", -margin.left + 15)
-            .attr("dy", "0.32em")
-            .attr("text-anchor", "middle")
-            .attr("font-size", "12px")
-            .attr("font-family", "Roboto")
-            .text("# of Games Back");
 
-  
+        g.append("text")
+          .attr("class", "y-axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("x", -height / 2)
+          .attr("y", -margin.left + 15)
+          .attr("dy", "0.32em")
+          .attr("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .attr("font-family", "Roboto")
+          .text("# of Games Back");
+
+
         // Wildcard line
         g.append("path")
           .datum(data)
@@ -419,7 +435,7 @@
           .style("stroke", ORIOLE_ORANGE)
           .style("stroke-width", 2)
           .attr("d", lineWild)
-  
+
         // Division line
         g.append("path")
           .datum(data)
@@ -428,6 +444,52 @@
           .style("stroke", DIVISION_GRAY)
           .style("stroke-width", 2)
           .attr("d", lineDiv)
+
+        const lastPoint = data[data.length - 1];
+        console.log("Last Point:", lastPoint);
+        
+        // Projection
+        const today = lastPoint.date;
+        const futureStart = data.find(d => d.date >= today);
+        const projValue = futureStart?.projected;
+        const stdDev = futureStart?.stdDev;
+
+        if (futureStart && projValue !== null && stdDev !== null) {
+          const futureData = [
+            { date: futureStart.date, value: futureStart.wildcardGamesBack },
+            { date: parseDate("2025-09-28"), value: projValue }
+          ];
+
+          const lineProjected = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d.value));
+
+          g.append("path")
+            .datum(futureData)
+            .attr("fill", "none")
+            .attr("stroke", ORIOLE_ORANGE)
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "6 3")
+            .attr("d", lineProjected);
+
+          const area = d3.area()
+            .x(d => x(d.date))
+            .y0(d => {
+              const interp = (d.date - futureStart.date) / (parseDate("2025-09-28") - futureStart.date);
+              return y(d.value - (stdDev * interp));
+            })
+            .y1(d => {
+              const interp = (d.date - futureStart.date) / (parseDate("2025-09-28") - futureStart.date);
+              return y(d.value + (stdDev * interp));
+            })
+            .curve(d3.curveMonotoneX);
+
+          g.append("path")
+            .datum(futureData)
+            .attr("fill", ORIOLE_ORANGE)
+            .attr("opacity", 0.1)  // soft background
+            .attr("d", area);
+        }
 
         const focusWild = g.append("g")
           .attr("class", "focus-wild")
@@ -448,16 +510,14 @@
           .attr("fill", DIVISION_GRAY)
           .attr("stroke", "#fff")
           .attr("stroke-width", 0);
-        
-        const lastPoint = data[data.length - 1];
 
         focusWild
-        .style("display", null)
-        .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
+          .style("display", null)
+          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
 
         focusDiv
-        .style("display", null)
-        .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
+          .style("display", null)
+          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
 
         const focusLineX = g.append("line")
           .attr("class", "focus-line-x")
@@ -475,40 +535,61 @@
           .style("opacity", 0);
 
         const focusLineYDiv = g.append("line")
-        .attr("class", "focus-line-y")
-        .style("stroke", `${DIVISION_GRAY}`)
-        .style("stroke-width", 1)
-        .style("stroke-dasharray", "4 2")
-        .style("opacity", 0);
+          .attr("class", "focus-line-y")
+          .style("stroke", `${DIVISION_GRAY}`)
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "4 2")
+          .style("opacity", 0);
 
         const bisectDate = d3.bisector(d => d.date).left;
 
+        // Projected endpoint marker on 9/28/2025
+        const finalProjectionDate = parseDate("2025-09-28");
+
+        g.append("circle")
+          .attr("cx", x(finalProjectionDate))
+          .attr("cy", y(projValue))
+          .attr("r", 12)
+          .style("fill", ORIOLE_ORANGE)
+          .style("stroke", "#fff")
+          .style("stroke-width", 1.5);
+
+        // Add projected value as text inside the circle
+        g.append("text")
+          .attr("x", x(finalProjectionDate))
+          .attr("y", y(projValue) + 4)  // vertically center text
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("fill", "#fff")
+          .attr("font-weight", "bold")
+          .text(projValue.toFixed(0));
+
         g.append("rect")
-        .attr("class", "overlay")
-        .attr("width", width)
-        .attr("height", height)
-        .style("fill", "none")
-        .style("pointer-events", "all")
-        .style("cursor", "crosshair")
-        .on("mouseover", () => {
-          focusWild.style("display", null);
-          focusDiv.style("display", null);
-        })
-        .on("mouseout", () => {
-          focusLineX.style("opacity", 0);
-          focusLineYWild.style("opacity", 0);
-          focusLineYDiv.style("opacity", 0);
+          .attr("class", "overlay")
+          .attr("width", width)
+          .attr("height", height)
+          .style("fill", "none")
+          .style("pointer-events", "all")
+          .style("cursor", "crosshair")
+          .on("mouseover", () => {
+            focusWild.style("display", null);
+            focusDiv.style("display", null);
+          })
+          .on("mouseout", () => {
+            focusLineX.style("opacity", 0);
+            focusLineYWild.style("opacity", 0);
+            focusLineYDiv.style("opacity", 0);
 
-          focusWild
-          .style("display", null)
-          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
+            focusWild
+              .style("display", null)
+              .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.wildcardGamesBack)})`);
 
-          focusDiv
-          .style("display", null)
-          .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
+            focusDiv
+              .style("display", null)
+              .attr("transform", `translate(${x(lastPoint.date)},${y(lastPoint.divisionGamesBack)})`);
 
-          tooltip.style("opacity", 1)
-          .html(`
+            tooltip.style("opacity", 1)
+              .html(`
             <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
           <span class="date">${formatDateWithSuffix(lastPoint.date)}</span>
           <table class="tooltip-table" style="text-align:center;">
@@ -531,15 +612,15 @@
             </table>
           </div>`);
           })
-        .on("mousemove", mousemove)
+          .on("mousemove", mousemove)
 
         const tooltip = d3.select("#tooltip");
 
         tooltip
-        .style("left", "75px")
-        .style("top", `${margin.top + 275}px`)
-        .style("opacity", 1)
-        .html(`
+          .style("left", "75px")
+          .style("top", `${margin.top + 275}px`)
+          .style("opacity", 1)
+          .html(`
         <div class="tooltip-wrapper" style="display:flex;justify-content:center;align-items:center;flex-direction:column">
         <span class="date">${formatDateWithSuffix(lastPoint.date)}</span>
         <table class="tooltip-table" style="text-align:center;">
@@ -562,8 +643,8 @@
           </table>
         </div>`);
 
-      
-        function mousemove(event){
+
+        function mousemove(event) {
           const [mx] = d3.pointer(event, this);
           const xm = x.invert(mx);
 
@@ -572,7 +653,6 @@
           const d1 = data[i] || d0;
 
           const d = (xm - d0.date) > (d1.date - xm) ? d1 : d0;
-          console.log(d)
 
           focusWild.attr(
             "transform",
@@ -599,7 +679,7 @@
             .attr("y2", y(d.wildcardGamesBack))
             .style("opacity", 1);
 
-            focusLineYDiv
+          focusLineYDiv
             .attr("x1", 0)
             .attr("x2", width)
             .attr("y1", y(d.divisionGamesBack))
@@ -632,12 +712,13 @@
               </tbody>
               </table>
             </div>`);
-            }
+        }
       })
       .catch(err => console.error("DynamoDB load error:", err));
   </script>
-  
-  
+
+
 
 </body>
+
 </html>
