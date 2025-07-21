@@ -38,6 +38,16 @@
       }
     }
 
+    .chart-context {
+      display: flex;
+      flex-direction: column;
+      text-align: flex-start;
+      max-width: 600px;
+      margin: 2em auto;
+      font-size: 1.25em;
+      line-height: 1.5em;
+    }
+
     .headline {
       display: flex;
       flex-direction: row;
@@ -193,12 +203,17 @@
 <body>
 
   <div class="headline">
-    <d2>Baltimore Orioles <br>Data Visualizations (2025)</d2>
+    <d2>Baltimore Orioles Playoff <br>Chances in 2025</d2>
   </div>
   <div class="viz-1">
     <h2 class="title">How many <span class="highlight">games back</span> are they?</h2>
     <svg id="chart" width="960" height="400"></svg>
     <div id="tooltip" class="tooltip"></div>
+    <div class="chart-context">
+      <small>As of <strong><span id="current-date"></span></strong>, the Orioles are <strong>not</strong> projected to make the playoffs in 2025. By the end of the season, they are expected to be <strong><span id="gb-text"></span> games back</strong> from the final wild card spot in the American League.</small>
+      <br>
+      <small>Based on their current elo rating, their strength of schedule the rest of the season, and additional factors (including margin of victory in previous games, home-field advantage, etc.), the Orioles are projected to win between <strong><span id="p10-count"></span></strong> and <strong><span id="p90-count"></span></strong> games this season.</small>
+    </div>
   </div>
   <div class="recent-scores">
     <h2 class="title">Scores from the last 10 games</h2>
@@ -254,7 +269,7 @@
       return new Promise((resolve, reject) => {
         docClient.scan({
           TableName: "Orioles-Games_Back",
-          ProjectionExpression: "#id, #date, #wildcard_gb, #division_gb, proj_gb_from_wc3, std_dev",
+          ProjectionExpression: "#id, #date, #wildcard_gb, #division_gb, median_wins, p10, p90, proj_gb_from_wc3, std_dev",
           ExpressionAttributeNames: {
             "#id": "id",
             "#date": "date",
@@ -349,7 +364,6 @@
       const games = jsonData;
       const div = document.getElementById("gameDiv");
 
-      console.log(games)
 
       games.forEach(game => {
         const date = new Date(game.date);
@@ -390,9 +404,13 @@
           wildcardGamesBack: +d.wildcard_gb,
           divisionGamesBack: +d.division_gb,
           projected: d.proj_gb_from_wc3 ? +d.proj_gb_from_wc3 : null,
-          stdDev: d.std_dev ? +d.std_dev : null
+          stdDev: d.std_dev ? +d.std_dev : null,
+          median_wins: d.median_wins ? +d.median_wins : null,
+          p10: d.p10 ? +d.p10 : null,
+          p90: d.p90 ? +d.p90 : null,
         }))
           .sort((a, b) => d3.ascending(a.date, b.date));
+
 
         const [firstDate, lastDate] = d3.extent(data, d => d.date);
 
@@ -459,6 +477,24 @@
             { date: futureStart.date, value: futureStart.wildcardGamesBack },
             { date: parseDate("2025-09-28"), value: projValue }
           ];
+
+          // summary text
+
+          const formatDate = d3.timeFormat("%B %d, %Y");
+          const todayFormatted = formatDate(today)
+
+
+          d3.select("#current-date")
+          .text(formatDateWithSuffix(today));
+
+          d3.select("#gb-text")
+          .text(projValue.toFixed(0));
+
+          d3.select("#p10-count")
+          .text(futureStart.p10.toFixed(0));
+
+          d3.select("#p90-count")
+          .text(futureStart.p90.toFixed(0));
 
           const lineProjected = d3.line()
             .x(d => x(d.date))
