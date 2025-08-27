@@ -197,6 +197,47 @@
       }
 
     }
+
+    #standings-table {
+      margin: auto;
+      border-collapse: collapse;
+      font-family: "Roboto", sans-serif;
+      width: 100%;
+      max-width: 750px;
+      min-width: 500px;
+      font-size: 14px;
+    }
+
+    #standings-table thead {
+      background-color: #ddd;
+      color: black;
+    }
+
+    #standings-table th {
+      padding: 0.5em;
+    }
+    #standings-table td {
+      padding: 0.25em;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #standings-table .orioles-row {
+      background-color: #fff4ee;
+      font-weight: 600;
+    }
+
+    #standings-table .playoff-row {
+      background-color: mintcream;
+      font-weight: 400;
+    }
+
+    #standings-table img.team-standings-logo {
+      height: 28px;
+      width: 28px;
+      vertical-align: middle;
+      margin-right: 0em;
+    }
   </style>
 </head>
 
@@ -213,6 +254,25 @@
       <small>As of <strong><span id="current-date"></span></strong>, the Orioles are <strong>not</strong> projected to make the playoffs in 2025. By the end of the season, they are expected to be <strong><span id="gb-text"></span> games back</strong> from the final wild card spot in the American League.</small>
       <br>
       <small>Based on their current elo rating, their strength of schedule the rest of the season, and additional factors (including margin of victory in previous games, home-field advantage, etc.), the Orioles are projected to win between <strong><span id="p10-count"></span></strong> and <strong><span id="p90-count"></span></strong> games this season.</small>
+    </div>
+  </div>
+  <div class = "projected-standings">
+    <h2 class="title">Project Standings at the End of the Season</h2>
+    <div class = "standings-div" id="standingsDiv">
+      <table id = "standings-table">
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Expected Wins</th>
+            <th>Expected Losses</th>
+          <tr>
+        </thead>
+        <tbody>
+        </tbody>
+        </table>
+    </div>
+    <div class="chart-context">
+      <small>From the projected standings above, it looks like the <strong>Baltimore Orioles</strong> fall well short of making the playoffs in 2025. The AL projected rankings as of <span id="current-date"></span> demonstrate they are very far back from the final wild card spot.</small>
     </div>
   </div>
   <div class="recent-scores">
@@ -300,6 +360,51 @@
       });
     }
 
+    function loadEndOfSeasonRankingProjections(){
+      const s3CsvUrl = "https://mlb-predictions-2025.s3.us-east-1.amazonaws.com/end-of-year-standings-predictions_2025-08-27.csv";
+      d3.csv(s3CsvUrl).then(data => {
+        data.forEach(d => {
+          d.median_wins = +d.median_wins;
+          d.team = d.team;
+          d.median_losses = 162 - +d.median_wins;
+        });
+
+        data.sort((a, b) => d3.descending(a.median_wins, b.median_wins))
+        const tbody = d3.select("#standings-table").select("tbody");
+        data.forEach((d, i) => {
+          const teamName = logoLookup(d.team)
+          const row = tbody.append("tr")
+          .attr("class", d.team === "BAL" ? "orioles-row" : (i <= 5 ? "playoff-row": null))
+
+          const teamCell = row.append("td");
+          teamCell.html(`<img src="https://mlb-logos-for-visuals.s3.us-east-1.amazonaws.com/${teamName}/logo.png" class="team-standings-logo"/> ${d.team}`)
+          row.append("td").text(d.median_wins);
+          row.append("td").text(d.median_losses);
+        })
+    })
+  }
+
+  function logoLookup(abbrev){
+    teams = {
+      "ATH": "Athletics",
+      "BAL": "Baltimore-Orioles",
+      "BOS": "Boston-Red-Sox",
+      "CLE": "Cleveland-Guardians",
+      "CWS": "Chicago-White-Sox",
+      "DET": "Detroit-Tigers",
+      "HOU": "Houston-Astros",
+      "KC": "Kansas-City-Royals",
+      "LAA": "Los-Angeles-Angels",
+      "MIN": "Minnesota-Twins",
+      "NYY": "New-York-Yankees",
+      "SEA": "Seattle-Mariners",
+      "TB": "Tampa-Bay-Rays",
+      "TEX": "Texas-Rangers",
+      "TOR": "Toronto-Blue-Jays"
+    }
+    return teams[abbrev];
+  }
+
     function loadLogosFromS3(team_name) {
       const S3_BASE = "https://mlb-logos-for-visuals.s3.amazonaws.com/";
       const team_name_dashes = team_name.replaceAll(" ", "-");
@@ -358,6 +463,7 @@
 
       const pastTenGames = data.slice(0, 10)
       createGameBoard(pastTenGames)
+      loadEndOfSeasonRankingProjections()
     })
 
     function createGameBoard(jsonData) {
@@ -464,7 +570,6 @@
           .attr("d", lineDiv)
 
         const lastPoint = data[data.length - 1];
-        console.log("Last Point:", lastPoint);
         
         // Projection
         const today = lastPoint.date;
