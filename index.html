@@ -257,7 +257,7 @@
     </div>
   </div>
   <div class = "projected-standings">
-    <h2 class="title">Project Standings at the End of the Season</h2>
+    <h2 class="title">Projected AL Standings at the End of the Season</h2>
     <div class = "standings-div" id="standingsDiv">
       <table id = "standings-table">
         <thead>
@@ -272,7 +272,7 @@
         </table>
     </div>
     <div class="chart-context">
-      <small>From the projected standings above, it looks like the <strong>Baltimore Orioles</strong> fall well short of making the playoffs in 2025. The AL projected rankings as of <span id="current-date"></span> demonstrate they are very far back from the final wild card spot.</small>
+      <small>From the projected standings above, it looks like the <strong>Baltimore Orioles</strong> will fall well short of making the playoffs in 2025. The projections, as of <strong><span id="current-date-standings"></span></strong>, suggest that <strong>the Orioles will finish <span id="current-date-standings-number"></span> in the American League</strong> and <strong><span id="gb-text-standings"></span> games back</strong> from the <strong><span id="last-wild-card-team"></span></strong> for the final Wild Card spot.</small>
     </div>
   </div>
   <div class="recent-scores">
@@ -361,7 +361,11 @@
     }
 
     function loadEndOfSeasonRankingProjections(){
-      const s3CsvUrl = "https://mlb-predictions-2025.s3.us-east-1.amazonaws.com/end-of-year-standings-predictions_2025-08-27.csv";
+      const today = new Date();
+      const formatDate = d3.timeFormat("%Y-%m-%d")
+      const formatted = formatDate(today)
+
+      const s3CsvUrl = `https://mlb-predictions-2025.s3.us-east-1.amazonaws.com/end-of-year-standings-predictions_${formatted}.csv`;
       d3.csv(s3CsvUrl).then(data => {
         data.forEach(d => {
           d.median_wins = +d.median_wins;
@@ -375,6 +379,19 @@
           const teamName = logoLookup(d.team)
           const row = tbody.append("tr")
           .attr("class", d.team === "BAL" ? "orioles-row" : (i <= 5 ? "playoff-row": null))
+
+          if(d.team === "BAL"){
+            orioles_current_standing = i + 1;
+            console.log(orioles_current_standing)
+            d3.select("#current-date-standings-number")
+            .text(formatNumberWithSuffix(orioles_current_standing));
+          }
+
+          if(i === 5){
+            const lastWildCardTeam = logoLookup(d.team).replaceAll("-", " ")
+            d3.select("#last-wild-card-team")
+            .text(lastWildCardTeam)
+          }
 
           const teamCell = row.append("td");
           teamCell.html(`<img src="https://mlb-logos-for-visuals.s3.us-east-1.amazonaws.com/${teamName}/logo.png" class="team-standings-logo"/> ${d.team}`)
@@ -435,6 +452,14 @@
       else if (day % 10 === 2 && day !== 12) suffix = "nd";
       else if (day % 10 === 3 && day !== 13) suffix = "rd";
       return d3.timeFormat("%B")(date) + " " + day + suffix;
+    }
+
+    function formatNumberWithSuffix(num) {
+      let suffix = "th";
+      if (num % 10 === 1 && num !== 11) suffix = "st";
+      else if (num % 10 === 2 && num !== 12) suffix = "nd";
+      else if (num % 10 === 3 && num !== 13) suffix = "rd";
+      return num + suffix;
     }
 
 
@@ -592,7 +617,13 @@
           d3.select("#current-date")
           .text(formatDateWithSuffix(today));
 
+          d3.select("#current-date-standings")
+          .text(formatDateWithSuffix(today));
+
           d3.select("#gb-text")
+          .text(projValue.toFixed(0));
+
+          d3.select("#gb-text-standings")
           .text(projValue.toFixed(0));
 
           d3.select("#p10-count")
